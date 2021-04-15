@@ -2,7 +2,11 @@ from django.shortcuts import render
 from rest_framework import generics
 from .permissions import IsAdmin, IsCritic, IsUser
 from rest_framework.authentication import TokenAuthentication
-from .serializers import MovieSerializer, CriticReviewsSerializer
+from .serializers import (
+    MovieSerializer,
+    CriticReviewsSerializer,
+    UserCommentsSerializer,
+)
 from .models import Movie, Criticism, Comment
 from accounts.models import User
 from rest_framework.response import Response
@@ -31,6 +35,14 @@ class MovieView(MultipleFieldLookupMixin, generics.ListCreateAPIView):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
     lookup_fields = ["title"]
+
+
+class MovieRetrieveView(generics.RetrieveDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAdmin]
+    queryset = Movie.objects.all()
+    serializer_class = MovieSerializer
+    lookup_url_kwarg = "movie_id"
 
 
 class CriticismReviewView(generics.CreateAPIView, generics.UpdateAPIView):
@@ -73,8 +85,8 @@ class CriticismReviewView(generics.CreateAPIView, generics.UpdateAPIView):
 
         except ObjectDoesNotExist:
             return Response(
-                {"detail": "invalid_movie_id"},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                {"detail": "Not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
     def update(self, request, *args, **kwargs):
@@ -102,18 +114,53 @@ class CriticismReviewView(generics.CreateAPIView, generics.UpdateAPIView):
         return Response(serializer.data)
 
 
-# class CommentReviewView(generics.CreateAPIView):
-#     authentication_classes = [TokenAuthentication]
-#     permission_classes = [IsUser]
+class CommentReviewView(generics.CreateAPIView, generics.UpdateAPIView):
+    queryset = Movie.objects.all()
+    serializer_class = UserCommentsSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsUser]
+    lookup_url_kwarg = "movie_id"
 
-#     def create(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-#         comment = Comment.objects.create(comment=request.data["comment"])
+        comment = Comment.objects.create(comment=request.data["comment"])
+        comment.user.add(request.user)
+        try:
+            movie = Movie.objects.get(id=kwargs["movie_id"])
 
-#         self.perform_create(serializer)
-#         headers = self.get_success_headers(serializer.data)
-#         return Response(
-#             serializer.data, status=status.HTTP_201_CREATED, headers=headers
-#         )
+        except ObjectDoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        comment.movie_set.add(movie)
+        serializer = UserCommentsSerializer(comment)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        movie = Movie.objects.get(id=kwargs["movie_id"])
+        try:
+            comment = Comment.objects.get(
+                id=request.data["comment_id"], user=request.user, movie=movie
+            )
+
+        except ObjectDoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        comment.comment = request.data["comment"]
+        comment.save()
+        serializer = UserCommentsSerializer(comment)
+        if getattr(instance, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+        return Response(serializer.data)

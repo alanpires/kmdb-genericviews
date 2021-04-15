@@ -16,16 +16,18 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class UserCommentsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Comment
-        fields = "__all__"
-
-
 class UserSetSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "first_name", "last_name"]
+
+
+class UserCommentsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ["id", "user", "comment"]
+
+    user = UserSetSerializer(read_only=True, many=True)
 
 
 class CriticReviewsSerializer(serializers.ModelSerializer):
