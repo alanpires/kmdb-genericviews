@@ -37,7 +37,7 @@ class MovieView(MultipleFieldLookupMixin, generics.ListCreateAPIView):
     lookup_fields = ["title"]
 
 
-class MovieRetrieveView(generics.RetrieveDestroyAPIView):
+class MovieRetrieveDestroyView(generics.RetrieveDestroyAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAdmin]
     queryset = Movie.objects.all()

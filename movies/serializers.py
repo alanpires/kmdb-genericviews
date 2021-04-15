@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import Movie, Classification, Genre, Comment, Criticism
 from accounts.models import User
-import ipdb
 
 
 class ClassificationSerializer(serializers.ModelSerializer):
