@@ -1,12 +1,6 @@
 from rest_framework import serializers
-from .models import Movie, Classification, Genre, Comment, Criticism
+from .models import Movie, Comment, Criticism, Genre
 from accounts.models import User
-
-
-class ClassificationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Classification
-        fields = "__all__"
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -26,7 +20,7 @@ class UserCommentsSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ["id", "user", "comment"]
 
-    user = UserSetSerializer(read_only=True, many=True)
+    user = UserSetSerializer(read_only=True)
 
 
 class CriticReviewsSerializer(serializers.ModelSerializer):
@@ -34,7 +28,8 @@ class CriticReviewsSerializer(serializers.ModelSerializer):
         model = Criticism
         fields = ["id", "critic", "stars", "review", "spoilers"]
 
-    critic = UserSetSerializer(read_only=True, many=True)
+    critic = UserSetSerializer(read_only=True)
+    stars = serializers.IntegerField(required=False, min_value=1, max_value=10)
 
 
 class MovieSerializer(serializers.ModelSerializer):
@@ -48,32 +43,27 @@ class MovieSerializer(serializers.ModelSerializer):
             "launch",
             "classification",
             "synopsis",
-            "critic_reviews",
-            "user_comments",
+            "critic_set",
+            "comment_set",
         ]
 
     def create(self, validated_data):
-        classification = Classification.objects.get_or_create(
-            age=validated_data["classification"]["age"]
-        )[0]
-
         movie = Movie.objects.get_or_create(
             title=validated_data["title"],
             duration=validated_data["duration"],
             launch=validated_data["launch"],
-            classification=classification,
+            classification=validated_data["classification"],
             synopsis=validated_data["synopsis"],
         )[0]
 
         genres = validated_data["genres"]
 
         for genre in genres:
-            genre_queryset = Genre.objects.get_or_create(name=genre["name"])[0]
-            movie.genres.add(genre_queryset)
+            genre_created = Genre.objects.get_or_create(**genre)[0]
+            movie.genres.add(genre_created)
 
         return movie
 
-    classification = ClassificationSerializer()
     genres = GenreSerializer(many=True)
-    critic_reviews = CriticReviewsSerializer(many=True, read_only=True)
-    user_comments = UserCommentsSerializer(many=True, read_only=True)
+    critic_set = CriticReviewsSerializer(many=True, read_only=True)
+    comment_set = UserCommentsSerializer(many=True, read_only=True)

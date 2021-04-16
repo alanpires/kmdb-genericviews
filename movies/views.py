@@ -12,6 +12,7 @@ from accounts.models import User
 from rest_framework.response import Response
 from rest_framework import status
 from django.core.exceptions import ObjectDoesNotExist
+import ipdb
 
 
 class MultipleFieldLookupMixin:
@@ -65,11 +66,9 @@ class CriticismReviewView(generics.CreateAPIView, generics.UpdateAPIView):
                     stars=request.data["stars"],
                     review=request.data["review"],
                     spoilers=request.data["spoilers"],
+                    critic=request.user,
+                    movie=movie,
                 )
-                critic.critic.add(request.user)
-
-                movie = Movie.objects.get(id=kwargs["movie_id"])
-                critic.movie_set.add(movie)
 
                 serializer = CriticReviewsSerializer(critic)
                 headers = self.get_success_headers(serializer.data)
@@ -125,18 +124,20 @@ class CommentReviewView(generics.CreateAPIView, generics.UpdateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        comment = Comment.objects.create(comment=request.data["comment"])
-        comment.user.add(request.user)
         try:
             movie = Movie.objects.get(id=kwargs["movie_id"])
 
         except ObjectDoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        comment.movie_set.add(movie)
+        comment = Comment.objects.create(
+            comment=request.data["comment"], user=request.user, movie=movie
+        )
+
         serializer = UserCommentsSerializer(comment)
 
         headers = self.get_success_headers(serializer.data)
+
         return Response(
             serializer.data, status=status.HTTP_201_CREATED, headers=headers
         )
