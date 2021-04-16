@@ -1,9 +1,8 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 import json
-import ipdb
 
-# TESTAR FORMATO DO RETORNO DESSA VIEW
+
 class TestMovieView(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -198,6 +197,36 @@ class TestMovieView(TestCase):
 
         self.assertEqual(len(filter_movies.json()), 2)
         self.assertEqual(filter_movies.status_code, 200)
+
+    def test_output_format_data(self):
+        # create admin user
+        self.client.post("/api/accounts/", self.admin_data, format="json")
+
+        # login
+        token = self.client.post(
+            "/api/login/", self.admin_login_data, format="json"
+        ).json()["token"]
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # create movie 1
+        movie_1 = self.client.post(
+            "/api/movies/", self.movie_data, format="json"
+        ).json()
+
+        output_format_movie_data = {
+            "id": 1,
+            "title": "O Poderoso Chefão",
+            "duration": "175m",
+            "genres": [{"id": 1, "name": "Crime"}, {"id": 2, "name": "Drama"}],
+            "launch": "1972-09-10",
+            "classification": 14,
+            "synopsis": "Don Vito Corleone (Marlon Brando) é o chefe de uma 'família' de Nova York que está feliz, pois Connie (Talia Shire), sua filha,se casou com Carlo (Gianni Russo). Por ser seu padrinho Vito foi procurar o líder da banda e ofereceu 10 mil dólares para deixar Johnny sair, mas teve o pedido recusado.",
+            "criticism_set": [],
+            "comment_set": [],
+        }
+
+        self.assertEqual(movie_1, output_format_movie_data)
 
 
 class TestMovieRetrieveDestroyView(TestCase):
@@ -666,3 +695,395 @@ class TestCommentReviewView(TestCase):
 
         self.assertEqual(comment_2.status_code, 404)
         self.assertEqual(comment_2.json(), {"detail": "Not found."})
+
+
+class TestAccountView(TestCase):
+    def setUp(self):
+        self.user_data = {
+            "username": "user",
+            "password": "1234",
+            "is_superuser": False,
+            "is_staff": False,
+        }
+
+        self.user_login_data = {
+            "username": "user",
+            "password": "1234",
+        }
+
+        self.critic_data = {
+            "username": "critic",
+            "password": "1234",
+            "is_superuser": False,
+            "is_staff": True,
+        }
+
+        self.critic_login_data = {
+            "username": "critic",
+            "password": "1234",
+        }
+
+        self.admin_data = {
+            "username": "admin",
+            "password": "1234",
+            "is_superuser": True,
+            "is_staff": True,
+        }
+
+        self.admin_login_data = {
+            "username": "admin",
+            "password": "1234",
+        }
+
+        self.wrong_admin_login_data = {
+            "username": "admin",
+            "password": "12345",
+        }
+
+    def test_create_and_login_for_user_account(self):
+        client = APIClient()
+        # create user
+        user = client.post("/api/accounts/", self.user_data, format="json").json()
+
+        self.assertEqual(
+            user,
+            {"id": 1, "username": "user", "is_superuser": False, "is_staff": False},
+        )
+
+        # login
+        response = client.post(
+            "/api/login/", self.user_login_data, format="json"
+        ).json()
+
+        self.assertIn("token", response.keys())
+
+    def test_create_and_login_for_critic_account(self):
+        client = APIClient()
+        # create user
+        user = client.post("/api/accounts/", self.critic_data, format="json").json()
+
+        self.assertEqual(
+            user,
+            {"id": 1, "username": "critic", "is_superuser": False, "is_staff": True},
+        )
+
+        # login
+        response = client.post(
+            "/api/login/", self.critic_login_data, format="json"
+        ).json()
+
+        self.assertIn("token", response.keys())
+
+    def test_create_and_login_for_admin_account(self):
+        client = APIClient()
+        # create user
+        user = client.post("/api/accounts/", self.admin_data, format="json").json()
+
+        self.assertEqual(
+            user, {"id": 1, "username": "admin", "is_superuser": True, "is_staff": True}
+        )
+
+        # login
+        response = client.post(
+            "/api/login/", self.admin_login_data, format="json"
+        ).json()
+
+        self.assertIn("token", response.keys())
+
+    def test_create_user_already_exists(self):
+
+        client = APIClient()
+        # create user
+        client.post("/api/accounts/", self.admin_data, format="json")
+        response = client.post("/api/accounts/", self.admin_data, format="json")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json(), {"detail": "user already exists"})
+
+    def test_wrong_credentials_do_not_login(self):
+        client = APIClient()
+
+        # try to login with non existing user
+        response = client.post("/api/login/", self.admin_login_data, format="json")
+
+        self.assertEqual(response.status_code, 401)
+
+        # create user
+        client.post("/api/accounts/", self.admin_data, format="json").json()
+
+        # login with wrong password
+        response = client.post(
+            "/api/login/", self.wrong_admin_login_data, format="json"
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+
+class TestCriticismReviewView(TestCase):
+    def setUp(self):
+        self.user_data = {
+            "username": "user",
+            "password": "1234",
+            "is_superuser": False,
+            "is_staff": False,
+        }
+
+        self.user_login_data = {
+            "username": "user",
+            "password": "1234",
+        }
+
+        self.critic_data = {
+            "username": "critic",
+            "password": "1234",
+            "is_superuser": False,
+            "is_staff": True,
+        }
+
+        self.critic_login_data = {
+            "username": "critic",
+            "password": "1234",
+        }
+
+        self.admin_data = {
+            "username": "admin",
+            "password": "1234",
+            "is_superuser": True,
+            "is_staff": True,
+        }
+
+        self.admin_login_data = {
+            "username": "admin",
+            "password": "1234",
+        }
+
+        self.movie_data_1 = {
+            "title": "O Poderoso Chefão",
+            "duration": "175m",
+            "genres": [{"name": "Crime"}, {"name": "Drama"}],
+            "launch": "1972-09-10",
+            "classification": 14,
+            "synopsis": "Don Vito Corleone (Marlon Brando) é o chefe de uma 'família' de Nova York que está feliz, pois Connie (Talia Shire), sua filha,se casou com Carlo (Gianni Russo). Por ser seu padrinho Vito foi procurar o líder da banda e ofereceu 10 mil dólares para deixar Johnny sair, mas teve o pedido recusado.",
+        }
+
+        self.movie_data_2 = {
+            "title": "Um Sonho de Liberdade",
+            "duration": "142m",
+            "genres": [{"name": "Drama"}, {"name": "Ficção científica"}],
+            "launch": "1994-10-14",
+            "classification": 16,
+            "synopsis": "Andy Dufresne é condenado a duas prisões perpétuas consecutivas pelas mortes de sua esposa e de seu amante. Porém, só Andy sabe que ele não cometeu os crimes. No presídio, durante dezenove anos, ele faz amizade com Red, sofre as brutalidades da vida na cadeia, se adapta, ajuda os carcereiros, etc.",
+        }
+        self.review_data_1 = {
+            "stars": 2,
+            "review": "Muito fraco",
+            "spoilers": False,
+        }
+
+        self.review_data_2 = {
+            "stars": 10,
+            "review": "Ótimo filme. Adorei a parte em que o fulaninho resgatou a fulaninha",
+            "spoilers": True,
+        }
+
+        self.wrong_review_data = {
+            "stars": 20,
+            "review": "Muito fraco",
+            "spoilers": False,
+        }
+
+    def test_create_review(self):
+        client = APIClient()
+
+        # create admin user
+        client.post("/api/accounts/", self.admin_data, format="json").json()
+        # create critc user
+        client.post("/api/accounts/", self.critic_data, format="json").json()
+        # create regular user
+        client.post("/api/accounts/", self.user_data, format="json").json()
+
+        # login with critic user
+        token = client.post(
+            "/api/login/", self.critic_login_data, format="json"
+        ).json()["token"]
+        client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # trying to create critic review without movie
+        response = client.post(
+            "/api/movies/1/review/", self.review_data_1, format="json"
+        )
+        self.assertEqual(response.status_code, 404)
+
+        # login with admin user for create movies
+        token = client.post("/api/login/", self.admin_login_data, format="json").json()[
+            "token"
+        ]
+        client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # creating movies to receive reviews
+        client.post("/api/movies/", self.movie_data_1, format="json")
+        client.post("/api/movies/", self.movie_data_2, format="json")
+
+        # admin trying to create critic review
+        response = client.post(
+            "/api/movies/1/review/", self.review_data_1, format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+        # login with regular user
+        token = client.post("/api/login/", self.user_login_data, format="json").json()[
+            "token"
+        ]
+        client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # regular user trying to create critic review
+        response = client.post(
+            "/api/movies/1/review/", self.review_data_1, format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+        # login with critic user
+        token = client.post(
+            "/api/login/", self.critic_login_data, format="json"
+        ).json()["token"]
+        client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # critic user trying to create review
+        response = client.post(
+            "/api/movies/1/review/", self.review_data_1, format="json"
+        )
+
+        expected_review_response = {
+            "id": 1,
+            "critic": {"id": 2, "first_name": "", "last_name": ""},
+            "stars": 2,
+            "review": "Muito fraco",
+            "spoilers": False,
+        }
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), expected_review_response)
+
+        expected_review_response = {"detail": "You already made this review."}
+
+        # critic user trying to create same review as before
+        response = client.post(
+            "/api/movies/1/review/", self.review_data_1, format="json"
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json(), expected_review_response)
+
+        # trying to create review with invalid number of stars
+        response = client.post(
+            "/api/movies/2/review/", self.wrong_review_data, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+
+        # verifying if criticism is nested with movie
+        response = client.get("/api/movies/").json()[0]
+        expected_criticism_set = [
+            {
+                "id": 1,
+                "critic": {"id": 2, "first_name": "", "last_name": ""},
+                "stars": 2,
+                "review": "Muito fraco",
+                "spoilers": False,
+            }
+        ]
+        self.assertEqual(len(response["criticism_set"]), 1)
+        self.assertEqual(response["criticism_set"], expected_criticism_set)
+
+    def test_update_review(self):
+        client = APIClient()
+
+        # create admin user
+        client.post("/api/accounts/", self.admin_data, format="json").json()
+        # create critc user
+        client.post("/api/accounts/", self.critic_data, format="json").json()
+        # create regular user
+        client.post("/api/accounts/", self.user_data, format="json").json()
+
+        # login with admin user for create movies
+        token = client.post("/api/login/", self.admin_login_data, format="json").json()[
+            "token"
+        ]
+        client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # creating movies to receive reviews
+        client.post("/api/movies/", self.movie_data_1, format="json")
+        client.post("/api/movies/", self.movie_data_2, format="json")
+
+        # login with critic user
+        token = client.post(
+            "/api/login/", self.critic_login_data, format="json"
+        ).json()["token"]
+        client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # critic user creating review
+        response = client.post(
+            "/api/movies/1/review/", self.review_data_1, format="json"
+        )
+
+        # critic user trying to update review
+        response = client.put(
+            "/api/movies/1/review/", self.review_data_2, format="json"
+        )
+        expected_review_response = {
+            "id": 1,
+            "critic": {"id": 2, "first_name": "", "last_name": ""},
+            "stars": 10,
+            "review": "Ótimo filme. Adorei a parte em que o fulaninho resgatou a fulaninha",
+            "spoilers": True,
+        }
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), expected_review_response)
+
+        # critic user trying to update review that doesnt exists
+        response = client.put(
+            "/api/movies/2/review/", self.review_data_2, format="json"
+        )
+        self.assertEqual(response.status_code, 404)
+
+        # critic user trying to update review when movie doesnt exists
+        response = client.put(
+            "/api/movies/3/review/", self.review_data_2, format="json"
+        )
+        self.assertEqual(response.status_code, 404)
+
+        # login with admin
+        token = client.post("/api/login/", self.admin_login_data, format="json").json()[
+            "token"
+        ]
+        client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # admin trying to update critic review
+        response = client.put(
+            "/api/movies/1/review/", self.review_data_2, format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+        # login with regular user
+        token = client.post("/api/login/", self.user_login_data, format="json").json()[
+            "token"
+        ]
+        client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # regular user trying to update critic review
+        response = client.put(
+            "/api/movies/1/review/", self.review_data_2, format="json"
+        )
+        self.assertEqual(response.status_code, 403)
+
+        # verifying if uppdated criticism is nested with movie correctly
+        response = client.get("/api/movies/").json()[0]
+        expected_criticism_set = [
+            {
+                "id": 1,
+                "critic": {"id": 2, "first_name": "", "last_name": ""},
+                "stars": 10,
+                "review": "Ótimo filme. Adorei a parte em que o fulaninho resgatou a fulaninha",
+                "spoilers": True,
+            }
+        ]
+        self.assertEqual(len(response["criticism_set"]), 1)
+        self.assertEqual(response["criticism_set"], expected_criticism_set)

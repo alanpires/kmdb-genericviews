@@ -43,7 +43,7 @@ class MovieSerializer(serializers.ModelSerializer):
             "launch",
             "classification",
             "synopsis",
-            "critic_set",
+            "criticism_set",
             "comment_set",
         ]
 
@@ -65,5 +65,5 @@ class MovieSerializer(serializers.ModelSerializer):
         return movie
 
     genres = GenreSerializer(many=True)
-    critic_set = CriticReviewsSerializer(many=True, read_only=True)
+    criticism_set = CriticReviewsSerializer(many=True, read_only=True)
     comment_set = UserCommentsSerializer(many=True, read_only=True)
