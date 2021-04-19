@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from .models import User
-from .serializers import UserSerializer
+from .serializers import UserSerializerLogin, UserSerializerAccount
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from django.core.exceptions import ObjectDoesNotExist
@@ -11,26 +11,19 @@ from rest_framework import status
 
 class AccountsView(APIView):
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
+        serializer = UserSerializerAccount(data=request.data)
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            user = User.objects.get(username=request.data["username"])
-            return Response(
-                {"detail": "user already exists"}, status=status.HTTP_409_CONFLICT
-            )
-
-        except ObjectDoesNotExist:
-            created_user = User.objects.create_user(**request.data)
-            serializer = UserSerializer(created_user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        created_user = User.objects.create_user(**request.data)
+        serializer = UserSerializerAccount(created_user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
+        serializer = UserSerializerLogin(data=request.data)
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

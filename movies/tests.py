@@ -702,6 +702,8 @@ class TestAccountView(TestCase):
         self.user_data = {
             "username": "user",
             "password": "1234",
+            "first_name": "John",
+            "last_name": "Doe",
             "is_superuser": False,
             "is_staff": False,
         }
@@ -714,6 +716,8 @@ class TestAccountView(TestCase):
         self.critic_data = {
             "username": "critic",
             "password": "1234",
+            "first_name": "John",
+            "last_name": "Doe",
             "is_superuser": False,
             "is_staff": True,
         }
@@ -726,6 +730,8 @@ class TestAccountView(TestCase):
         self.admin_data = {
             "username": "admin",
             "password": "1234",
+            "first_name": "John",
+            "last_name": "Doe",
             "is_superuser": True,
             "is_staff": True,
         }
@@ -747,7 +753,14 @@ class TestAccountView(TestCase):
 
         self.assertEqual(
             user,
-            {"id": 1, "username": "user", "is_superuser": False, "is_staff": False},
+            {
+                "id": 1,
+                "username": "user",
+                "is_superuser": False,
+                "is_staff": False,
+                "first_name": "John",
+                "last_name": "Doe",
+            },
         )
 
         # login
@@ -764,7 +777,14 @@ class TestAccountView(TestCase):
 
         self.assertEqual(
             user,
-            {"id": 1, "username": "critic", "is_superuser": False, "is_staff": True},
+            {
+                "id": 1,
+                "username": "critic",
+                "is_superuser": False,
+                "is_staff": True,
+                "first_name": "John",
+                "last_name": "Doe",
+            },
         )
 
         # login
@@ -780,7 +800,15 @@ class TestAccountView(TestCase):
         user = client.post("/api/accounts/", self.admin_data, format="json").json()
 
         self.assertEqual(
-            user, {"id": 1, "username": "admin", "is_superuser": True, "is_staff": True}
+            user,
+            {
+                "id": 1,
+                "username": "admin",
+                "is_superuser": True,
+                "is_staff": True,
+                "first_name": "John",
+                "last_name": "Doe",
+            },
         )
 
         # login
@@ -797,8 +825,10 @@ class TestAccountView(TestCase):
         client.post("/api/accounts/", self.admin_data, format="json")
         response = client.post("/api/accounts/", self.admin_data, format="json")
 
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.json(), {"detail": "user already exists"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(), {"username": ["A user with that username already exists."]}
+        )
 
     def test_wrong_credentials_do_not_login(self):
         client = APIClient()
