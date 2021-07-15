@@ -10,7 +10,7 @@ class Movie(models.Model):
     title = models.TextField()
     duration = models.TextField(null=True, blank=True)
     genres = models.ManyToManyField(Genre)
-    launch = models.DateField(null=True, blank=True)
+    premiere = models.DateField(null=True, blank=True)
     classification = models.IntegerField(null=True, blank=True)
     synopsis = models.TextField(null=True, blank=True)
 
@@ -20,10 +20,4 @@ class Criticism(models.Model):
     stars = models.IntegerField()
     review = models.TextField()
     spoilers = models.BooleanField()
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, null=True, blank=True)
-
-
-class Comment(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    comment = models.TextField()
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, null=True, blank=True)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, null=True, blank=True, related_name='reviews')
