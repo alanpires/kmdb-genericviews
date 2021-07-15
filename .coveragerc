@@ -1,0 +1,10 @@
+[run]
+source = .
+omit = venv/*
+        manage.py
+        kmdb/wsgi.py
+        kmdb/asgi.py
+branch=True
+
+[report]
+show_missing=True

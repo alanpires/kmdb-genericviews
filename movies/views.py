@@ -1,12 +1,12 @@
-from django.shortcuts import render
 import ipdb
 from rest_framework import generics
-from .permissions import IsAdmin, IsCritic, IsUser
+from .permissions import IsAdmin, IsCritic, IsAdminOrReadOnly
 from rest_framework.authentication import TokenAuthentication
 from .serializers import (
     MovieWithoutCritic,
     MovieSerializer,
     CriticReviewsSerializer,
+    ReviewsSerializer,
 )
 from .models import Movie, Criticism
 from accounts.models import User
@@ -32,7 +32,7 @@ class MultipleFieldLookupMixin:
 
 class MovieView(MultipleFieldLookupMixin, generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrReadOnly]
     queryset = Movie.objects.all()
     serializer_class = MovieWithoutCritic
     lookup_fields = ["title"]
@@ -40,7 +40,7 @@ class MovieView(MultipleFieldLookupMixin, generics.ListCreateAPIView):
 
 class MovieRetrieveDestroyView(generics.RetrieveDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrReadOnly]
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
     lookup_url_kwarg = "movie_id"
@@ -112,8 +112,17 @@ class CriticismReviewView(generics.CreateAPIView, generics.UpdateAPIView):
         critic.spoilers = request.data["spoilers"]
         critic.save()
         serializer = CriticReviewsSerializer(critic)
-        if getattr(instance, "_prefetched_objects_cache", None):
-            # If 'prefetch_related' has been applied to a queryset, we need to
-            # forcibly invalidate the prefetch cache on the instance.
-            instance._prefetched_objects_cache = {}
         return Response(serializer.data)
+    
+class ListReviews(generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAdmin | IsCritic]
+    queryset = Criticism.objects.all()
+    serializer_class = ReviewsSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and user.is_staff and not user.is_superuser:
+            return Criticism.objects.filter(critic=user)
+            
+        return super().get_queryset()

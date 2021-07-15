@@ -24,6 +24,16 @@ class CriticReviewsSerializer(serializers.ModelSerializer):
     stars = serializers.IntegerField(required=False, min_value=1, max_value=10)
 
 
+class ReviewsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Criticism
+        fields = ["id", "critic", "stars", "review", "spoilers", "movie"]
+
+    critic = UserSetSerializer(read_only=True)
+    stars = serializers.IntegerField(required=False, min_value=1, max_value=10)
+
+
+
 class MovieWithoutCritic(serializers.ModelSerializer):
     class Meta:
         model = Movie
@@ -69,23 +79,6 @@ class MovieSerializer(serializers.ModelSerializer):
             "synopsis",
             "reviews",
         ]
-
-    def create(self, validated_data):
-        movie = Movie.objects.get_or_create(
-            title=validated_data["title"],
-            duration=validated_data["duration"],
-            premiere=validated_data["premiere"],
-            classification=validated_data["classification"],
-            synopsis=validated_data["synopsis"],
-        )[0]
-
-        genres = validated_data["genres"]
-
-        for genre in genres:
-            genre_created = Genre.objects.get_or_create(**genre)[0]
-            movie.genres.add(genre_created)
-
-        return movie
 
     genres = GenreSerializer(many=True)
     reviews = CriticReviewsSerializer(many=True, read_only=True,)
