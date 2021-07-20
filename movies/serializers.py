@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Movie, Comment, Criticism, Genre
+from .models import Movie, Criticism, Genre
 from accounts.models import User
 
 
@@ -15,14 +15,6 @@ class UserSetSerializer(serializers.ModelSerializer):
         fields = ["id", "first_name", "last_name"]
 
 
-class UserCommentsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Comment
-        fields = ["id", "user", "comment"]
-
-    user = UserSetSerializer(read_only=True)
-
-
 class CriticReviewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Criticism
@@ -32,7 +24,17 @@ class CriticReviewsSerializer(serializers.ModelSerializer):
     stars = serializers.IntegerField(required=False, min_value=1, max_value=10)
 
 
-class MovieSerializer(serializers.ModelSerializer):
+class ReviewsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Criticism
+        fields = ["id", "critic", "stars", "review", "spoilers", "movie"]
+
+    critic = UserSetSerializer(read_only=True)
+    stars = serializers.IntegerField(required=False, min_value=1, max_value=10)
+
+
+
+class MovieWithoutCritic(serializers.ModelSerializer):
     class Meta:
         model = Movie
         fields = [
@@ -40,18 +42,16 @@ class MovieSerializer(serializers.ModelSerializer):
             "title",
             "duration",
             "genres",
-            "launch",
+            "premiere",
             "classification",
-            "synopsis",
-            "criticism_set",
-            "comment_set",
+            "synopsis"
         ]
 
     def create(self, validated_data):
         movie = Movie.objects.get_or_create(
             title=validated_data["title"],
             duration=validated_data["duration"],
-            launch=validated_data["launch"],
+            premiere=validated_data["premiere"],
             classification=validated_data["classification"],
             synopsis=validated_data["synopsis"],
         )[0]
@@ -65,5 +65,20 @@ class MovieSerializer(serializers.ModelSerializer):
         return movie
 
     genres = GenreSerializer(many=True)
-    criticism_set = CriticReviewsSerializer(many=True, read_only=True)
-    comment_set = UserCommentsSerializer(many=True, read_only=True)
+
+class MovieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Movie
+        fields = [
+            "id",
+            "title",
+            "duration",
+            "genres",
+            "premiere",
+            "classification",
+            "synopsis",
+            "reviews",
+        ]
+
+    genres = GenreSerializer(many=True)
+    reviews = CriticReviewsSerializer(many=True, read_only=True,)
