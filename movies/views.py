@@ -15,30 +15,22 @@ from rest_framework import status
 from django.core.exceptions import ObjectDoesNotExist
 
 
-class MultipleFieldLookupMixin:
-    def get_queryset(self):
-        queryset = self.queryset
-        lookup_filter = {}
-        for lookup_field in self.lookup_fields:
-            if self.request.data.get(lookup_field):
-
-                lookup_filter[f"{lookup_field}__icontains"] = self.request.data.get(
-                    lookup_field
-                )
-
-        queryset = queryset.filter(**lookup_filter)
-        return queryset
-
-
-class MovieView(MultipleFieldLookupMixin, generics.ListCreateAPIView):
+class MovieView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAdminOrReadOnly]
     queryset = Movie.objects.all()
     serializer_class = MovieWithoutCritic
-    lookup_fields = ["title"]
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
 
-class MovieRetrieveDestroyView(generics.RetrieveDestroyAPIView):
+        if request.query_params.get('title', None):
+            queryset = queryset.filter(title__icontains=request.query_params.get('title', None))
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+class MovieRetrieveDestroyView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAdminOrReadOnly]
     queryset = Movie.objects.all()
@@ -46,7 +38,7 @@ class MovieRetrieveDestroyView(generics.RetrieveDestroyAPIView):
     lookup_url_kwarg = "movie_id"
     
     def get_serializer(self, *args, **kwargs):
-        if self.request.user.is_authenticated:
+        if self.request.user.is_authenticated and self.request.method != 'PUT':
             return super().get_serializer(*args, **kwargs)
         serializer_class = MovieWithoutCritic
         kwargs.setdefault('context', self.get_serializer_context())

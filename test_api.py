@@ -203,12 +203,7 @@ class TestMovieView(TestCase):
         ).json()
 
         # filter movies
-        filter_movies = self.client.generic(
-            method="GET",
-            path="/api/movies/",
-            data=json.dumps({"title": "liberdade"}),
-            content_type="application/json",
-        )
+        filter_movies = self.client.get("/api/movies/?title=liberdade")
 
         self.assertEqual(len(filter_movies.json()), 2)
         self.assertEqual(filter_movies.status_code, 200)
@@ -241,6 +236,118 @@ class TestMovieView(TestCase):
 
         self.assertEqual(movie_1, output_format_movie_data)
 
+    def test_only_admin_can_update_movie(self):
+        # create admin user
+        self.client.post("/api/accounts/", self.admin_data, format="json")
+
+        # login
+        token = self.client.post(
+            "/api/login/", self.admin_login_data, format="json"
+        ).json()["token"]
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # create movie
+        movie = self.client.post("/api/movies/", self.movie_data, format="json")
+        self.assertEqual(movie.json()["id"], 1)
+        self.assertEqual(movie.json()["title"], "O Poderoso Chefão")
+        self.assertEqual(movie.status_code, 201)
+        
+        # update movie
+        movie = self.client.put("/api/movies/1/", self.movie_data_2, format="json")
+        self.assertEqual(movie.json()["id"], 1)
+        self.assertEqual(movie.json()["title"], "Um Sonho de liberdade")
+        self.assertEqual(movie.status_code, 200)
+
+    def test_critic_cannot_update_movie(self):
+        # create admin user
+        self.client.post("/api/accounts/", self.admin_data, format="json")
+
+        # login
+        token = self.client.post(
+            "/api/login/", self.admin_login_data, format="json"
+        ).json()["token"]
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # create movie
+        self.client.post("/api/movies/", self.movie_data, format="json")
+        
+        # create critic user
+        self.client.post("/api/accounts/", self.critic_data, format="json")
+
+        # login
+        token = self.client.post(
+            "/api/login/", self.critic_login_data, format="json"
+        ).json()["token"]
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # critic cannot create movie
+        status_code = self.client.put(
+            "/api/movies/1/", self.movie_data_2, format="json"
+        ).status_code
+        self.assertEqual(status_code, 403)
+
+    def test_user_cannot_update_movie(self):
+        # create admin user
+        self.client.post("/api/accounts/", self.admin_data, format="json")
+
+        # login
+        token = self.client.post(
+            "/api/login/", self.admin_login_data, format="json"
+        ).json()["token"]
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # create movie
+        self.client.post("/api/movies/", self.movie_data, format="json")
+        
+        # create user
+        self.client.post("/api/accounts/", self.user_data, format="json")
+
+        # login
+        token = self.client.post(
+            "/api/login/", self.user_login_data, format="json"
+        ).json()["token"]
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # user cannot create movie
+        status_code = self.client.put(
+            "/api/movies/1/", self.movie_data_2, format="json"
+        ).status_code
+
+        self.assertEqual(status_code, 403)
+
+    def test_anonymous_cannot_update_movie(self):
+        # create admin user
+        self.client.post("/api/accounts/", self.admin_data, format="json")
+
+        # login
+        token = self.client.post(
+            "/api/login/", self.admin_login_data, format="json"
+        ).json()["token"]
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
+        # create movie
+        self.client.post("/api/movies/", self.movie_data, format="json")
+        
+        # remove admin credetials
+        self.client.credentials()
+        
+        # anonymous user create movie
+        response = self.client.put(
+            "/api/movies/1/", self.movie_data_2, format="json"
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            response.json(),
+            {"detail": "Authentication credentials were not provided."},
+        )
+        
 
 class TestMovieRetrieveDestroyView(TestCase):
     def setUp(self):
@@ -1388,8 +1495,6 @@ class TestListReview(TestCase):
         
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()), 2)
-        
-        print(response.json())
         
         critic_1 = {
             'first_name': 'Bruce',

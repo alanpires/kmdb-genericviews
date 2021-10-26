@@ -35,6 +35,9 @@ class ReviewsSerializer(serializers.ModelSerializer):
 
 
 class MovieWithoutCritic(serializers.ModelSerializer):
+    
+    genres = GenreSerializer(many=True)
+    
     class Meta:
         model = Movie
         fields = [
@@ -63,8 +66,25 @@ class MovieWithoutCritic(serializers.ModelSerializer):
             movie.genres.add(genre_created)
 
         return movie
+    
+    def update(self, instance, validated_data):
+        instance.title =validated_data.get("title")
+        instance.duration=validated_data.get("duration")
+        instance.premiere=validated_data.get("premiere")
+        instance.classification=validated_data.get("classification")
+        instance.synopsis=validated_data.get("synopsis")
 
-    genres = GenreSerializer(many=True)
+        genres = validated_data.get("genres")
+
+        instance.save()
+        
+        for genre in genres:
+            genre_created = Genre.objects.get_or_create(**genre)[0]
+            instance.genres.add(genre_created)
+
+        return instance
+
+    
 
 class MovieSerializer(serializers.ModelSerializer):
     class Meta:
