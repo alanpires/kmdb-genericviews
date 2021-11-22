@@ -15,7 +15,7 @@ class Movie(models.Model):
     synopsis = models.TextField(null=True, blank=True)
 
 
-class Criticism(models.Model):
+class Review(models.Model):
     critic = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     stars = models.IntegerField()
     review = models.TextField()

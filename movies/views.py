@@ -1,5 +1,6 @@
+from django.shortcuts import get_object_or_404
 import ipdb
-from rest_framework import generics
+from rest_framework import generics, filters
 from .permissions import IsAdmin, IsCritic, IsAdminOrReadOnly
 from rest_framework.authentication import TokenAuthentication
 from .serializers import (
@@ -8,11 +9,14 @@ from .serializers import (
     CriticReviewsSerializer,
     ReviewsSerializer,
 )
-from .models import Movie, Criticism
+from .models import Movie, Review
 from accounts.models import User
 from rest_framework.response import Response
 from rest_framework import status
 from django.core.exceptions import ObjectDoesNotExist
+
+class SearchForTitle(filters.SearchFilter):
+    search_param = "title"
 
 
 class MovieView(generics.ListCreateAPIView):
@@ -20,15 +24,9 @@ class MovieView(generics.ListCreateAPIView):
     permission_classes = [IsAdminOrReadOnly]
     queryset = Movie.objects.all()
     serializer_class = MovieWithoutCritic
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        if request.query_params.get('title', None):
-            queryset = queryset.filter(title__icontains=request.query_params.get('title', None))
-        
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+    filter_backends = [SearchForTitle]
+    search_fields = ['title']
+    
 
 class MovieRetrieveDestroyView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
@@ -44,77 +42,41 @@ class MovieRetrieveDestroyView(generics.RetrieveUpdateDestroyAPIView):
         kwargs.setdefault('context', self.get_serializer_context())
         return serializer_class(*args, **kwargs)
 
-class CriticismReviewView(generics.CreateAPIView, generics.UpdateAPIView):
-    queryset = Movie.objects.all()
+class ReviewView(generics.CreateAPIView, generics.UpdateAPIView):
+    queryset = Review.objects.all()
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsCritic]
     serializer_class = CriticReviewsSerializer
     lookup_url_kwarg = "movie_id"
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
 
-        try:
-            movie = Movie.objects.get(id=kwargs["movie_id"])
-            critic = Criticism.objects.filter(movie=movie, critic=request.user)
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
 
-            if len(critic) == 0:
-                critic = Criticism.objects.create(
-                    stars=request.data["stars"],
-                    review=request.data["review"],
-                    spoilers=request.data["spoilers"],
-                    critic=request.user,
-                    movie=movie,
-                )
+        assert lookup_url_kwarg in self.kwargs, (
+            'Expected view %s to be called with a URL keyword argument '
+            'named "%s". Fix your URL conf, or set the `.lookup_field` '
+            'attribute on the view correctly.' %
+            (self.__class__.__name__, lookup_url_kwarg)
+        )
+        
+        movie = get_object_or_404(Movie, id=self.kwargs['movie_id']) 
+        obj = get_object_or_404(queryset, movie=movie, critic=self.request.user)
 
-                serializer = CriticReviewsSerializer(critic)
-                headers = self.get_success_headers(serializer.data)
-                return Response(
-                    serializer.data, status=status.HTTP_201_CREATED, headers=headers
-                )
+        self.check_object_permissions(self.request, obj)
 
-            else:
-                return Response(
-                    {"detail": "You already made this review."},
-                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                )
-
-        except ObjectDoesNotExist:
-            return Response(
-                {"detail": "Not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop("partial", False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-
-        movie = Movie.objects.get(id=kwargs["movie_id"])
-        try:
-            critic = Criticism.objects.get(movie=movie, critic=request.user)
-
-        except ObjectDoesNotExist:
-            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        critic.stars = request.data["stars"]
-        critic.review = request.data["review"]
-        critic.spoilers = request.data["spoilers"]
-        critic.save()
-        serializer = CriticReviewsSerializer(critic)
-        return Response(serializer.data)
+        return obj
     
 class ListReviews(generics.ListAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAdmin | IsCritic]
-    queryset = Criticism.objects.all()
+    queryset = Review.objects.all()
     serializer_class = ReviewsSerializer
 
     def get_queryset(self):
         user = self.request.user
         if user.is_authenticated and user.is_staff and not user.is_superuser:
-            return Criticism.objects.filter(critic=user)
+            return Review.objects.filter(critic=user)
             
         return super().get_queryset()

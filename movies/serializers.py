@@ -1,7 +1,9 @@
 from rest_framework import serializers
-from .models import Movie, Criticism, Genre
+from .models import Movie, Review, Genre
 from accounts.models import User
-
+from .exceptions import ReviewException
+from django.shortcuts import get_object_or_404
+import ipdb
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,16 +19,30 @@ class UserSetSerializer(serializers.ModelSerializer):
 
 class CriticReviewsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Criticism
+        model = Review
         fields = ["id", "critic", "stars", "review", "spoilers"]
 
     critic = UserSetSerializer(read_only=True)
     stars = serializers.IntegerField(required=False, min_value=1, max_value=10)
+    
+    def validate(self, attrs):
+        if self.context['request'].method == 'POST':
+            movie = get_object_or_404(Movie, id=self.context['view'].kwargs['movie_id'])
+            review = Review.objects.filter(movie=movie, critic=self.context['request'].user).exists()
+            if review:
+                raise ReviewException
+        
+        return super().validate(attrs)
+    
+    def create(self, validated_data):
+        validated_data['critic_id'] = self.context['request'].user.id
+        validated_data['movie_id'] = self.context['view'].kwargs['movie_id']
+        return super().create(validated_data)
 
 
 class ReviewsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Criticism
+        model = Review
         fields = ["id", "critic", "stars", "review", "spoilers", "movie"]
 
     critic = UserSetSerializer(read_only=True)
