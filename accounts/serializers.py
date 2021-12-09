@@ -5,28 +5,13 @@ from .models import User
 class UserSerializerAccount(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = [
-            "id",
-            "username",
-            "first_name",
-            "last_name",
-            "password",
-            "is_superuser",
-            "is_staff",
-        ]
-
-    id = serializers.IntegerField(read_only=True)
-    password = serializers.CharField(write_only=True)
+        exclude = ['last_login', 'email', 'is_active', 'date_joined', 'groups', 'user_permissions']
+        extra_kwargs = {'password': {'write_only': True}}
+        
+    def create(self, validated_data):
+        return User.objects.create_user(**validated_data)
 
 
 class UserSerializerLogin(serializers.Serializer):
     password = serializers.CharField()
     username = serializers.CharField()
-
-
-class UserSerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
-    password = serializers.CharField(write_only=True)
-    username = serializers.CharField()
-    is_superuser = serializers.BooleanField(read_only=True)
-    is_staff = serializers.BooleanField(read_only=True)

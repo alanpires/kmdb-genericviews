@@ -3,7 +3,6 @@ from .models import Movie, Review, Genre
 from accounts.models import User
 from .exceptions import ReviewException
 from django.shortcuts import get_object_or_404
-import ipdb
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,10 +19,10 @@ class UserSetSerializer(serializers.ModelSerializer):
 class CriticReviewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = ["id", "critic", "stars", "review", "spoilers"]
+        exclude = ['movie']
 
     critic = UserSetSerializer(read_only=True)
-    stars = serializers.IntegerField(required=False, min_value=1, max_value=10)
+    stars = serializers.IntegerField(min_value=1, max_value=10)
     
     def validate(self, attrs):
         if self.context['request'].method == 'POST':
@@ -43,39 +42,22 @@ class CriticReviewsSerializer(serializers.ModelSerializer):
 class ReviewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = ["id", "critic", "stars", "review", "spoilers", "movie"]
+        fields = '__all__'
 
     critic = UserSetSerializer(read_only=True)
-    stars = serializers.IntegerField(required=False, min_value=1, max_value=10)
-
 
 
 class MovieWithoutCritic(serializers.ModelSerializer):
-    
     genres = GenreSerializer(many=True)
     
     class Meta:
         model = Movie
-        fields = [
-            "id",
-            "title",
-            "duration",
-            "genres",
-            "premiere",
-            "classification",
-            "synopsis"
-        ]
+        fields = '__all__'
 
     def create(self, validated_data):
-        movie = Movie.objects.get_or_create(
-            title=validated_data["title"],
-            duration=validated_data["duration"],
-            premiere=validated_data["premiere"],
-            classification=validated_data["classification"],
-            synopsis=validated_data["synopsis"],
-        )[0]
-
-        genres = validated_data["genres"]
+        genres = validated_data.pop("genres")
+        
+        movie = Movie.objects.get_or_create(**validated_data)[0]
 
         for genre in genres:
             genre_created = Genre.objects.get_or_create(**genre)[0]
@@ -84,37 +66,24 @@ class MovieWithoutCritic(serializers.ModelSerializer):
         return movie
     
     def update(self, instance, validated_data):
-        instance.title =validated_data.get("title")
-        instance.duration=validated_data.get("duration")
-        instance.premiere=validated_data.get("premiere")
-        instance.classification=validated_data.get("classification")
-        instance.synopsis=validated_data.get("synopsis")
-
-        genres = validated_data.get("genres")
-
-        instance.save()
+        genres = validated_data.pop("genres")
+        
+        genres_list = []
         
         for genre in genres:
             genre_created = Genre.objects.get_or_create(**genre)[0]
-            instance.genres.add(genre_created)
+            genres_list.append(genre_created)
+        
+        instance.genres.set(genres_list)
 
-        return instance
+        return super().update(instance, validated_data)
 
     
 
 class MovieSerializer(serializers.ModelSerializer):
     class Meta:
         model = Movie
-        fields = [
-            "id",
-            "title",
-            "duration",
-            "genres",
-            "premiere",
-            "classification",
-            "synopsis",
-            "reviews",
-        ]
+        fields = '__all__'
 
     genres = GenreSerializer(many=True)
     reviews = CriticReviewsSerializer(many=True, read_only=True,)

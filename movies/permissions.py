@@ -6,16 +6,16 @@ class IsAdminOrReadOnly(BasePermission):
         if request.method == "GET":
             return True
 
-        return request.user and request.user.is_superuser
+        return request.user.is_authenticated and request.user.is_superuser
 
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_superuser
+        return request.user.is_authenticated and request.user.is_superuser
 
 class IsCritic(BasePermission):
     def has_permission(self, request, view):
         return (
-            request.user
+            request.user.is_authenticated
             and request.user.is_staff
             and request.user.is_superuser == False
         )

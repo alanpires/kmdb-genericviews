@@ -1,24 +1,17 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
+from rest_framework.generics import CreateAPIView
 from .models import User
 from .serializers import UserSerializerLogin, UserSerializerAccount
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
-from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.response import Response
 from rest_framework import status
 
 
-class AccountsView(APIView):
-    def post(self, request):
-        serializer = UserSerializerAccount(data=request.data)
-
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        created_user = User.objects.create_user(**request.data)
-        serializer = UserSerializerAccount(created_user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+class AccountsView(CreateAPIView):
+    queryset = User.objects.none()
+    serializer_class = UserSerializerAccount
 
 
 class LoginView(APIView):
