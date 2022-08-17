@@ -89,8 +89,6 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 
 `POST /api/movies/` - criando um novo filme
 ```
-// REQUEST 
-// Header -> Authorization: Token <token-do-admin>
 // REQUEST
 // Header -> Authorization: Token <token-do-admin>
 {
@@ -107,7 +105,6 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 ```
 
 ```
-// RESPONSE STATUS -> HTTP 201
 // RESPONSE STATUS -> HTTP 201 CREATED
 {
   "id": 1,
