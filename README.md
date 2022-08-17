@@ -38,7 +38,7 @@ Para diferenciar entre os tipos de acesso, os usuários serão diferenciados atr
 - Crítico - terá os campos `is_staff == True` e `is_superuser == False`.
 - Admin - terá ambos os campos `is_staff` e `is_superuser` com o valor True.
 
-`POST /api/accounts/` - criando um usuário
+## `POST /api/accounts/` - criando um usuário
 
 ```
 // REQUEST
@@ -64,7 +64,7 @@ Para diferenciar entre os tipos de acesso, os usuários serão diferenciados atr
 }
 ```
 
-`POST /api/login/` - obtendo um token para o usuário
+## `POST /api/login/` - obtendo um token para o usuário
 
 ```
 // REQUEST
@@ -87,7 +87,7 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 -------------------
 
 
-`POST /api/movies/` - criando um novo filme
+## `POST /api/movies/` - criando um novo filme
 ```
 // REQUEST
 // Header -> Authorization: Token <token-do-admin>
@@ -126,7 +126,7 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 }
 ```
 
-`POST /api/movies/{movie_id}/review/` - criação de um review de um crítico
+## `POST /api/movies/{movie_id}/review/` - criação de um review de um crítico
 
 ```
 // REQUEST
@@ -153,7 +153,7 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 }
 ```
 
-`PUT /api/movies/{movie_id}>/review/` - Alteração uma crítica já realizada
+## `PUT /api/movies/{movie_id}>/review/` - Alteração uma crítica já realizada
 
 ```
 // REQUEST
@@ -181,7 +181,7 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 }
 ```
 
-`GET /api/reviews/` - Lista as reviews que foram realizadas
+## `GET /api/reviews/` - Lista as reviews que foram realizadas
 
 ```
 // REQUEST
@@ -230,7 +230,7 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 ]
 ```
 
-`GET /api/movies/` - Lista todos os filmes cadastrados
+## `GET /api/movies/` - Lista todos os filmes cadastrados
 
 ```
 // RESPONSE STATUS -> 200 OK
@@ -274,7 +274,7 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 ]
 ```
 
-`GET /api/movies?title=<nome>` - Lista todos os filmes cadastrados com base na filtragem do request
+## `GET /api/movies?title=<nome>` - Lista todos os filmes cadastrados com base na filtragem do request
 
 ```
 // RESPONSE STATUS 200 OK
@@ -318,7 +318,7 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 ]  
 ```
 
-`GET /api/movies/{movie_id}/` - Rota que busca o filme especificado pelo id
+## `GET /api/movies/{movie_id}/` - Rota que busca o filme especificado pelo id
 
 ```
 // REQUEST
@@ -360,7 +360,7 @@ Sobre Filmes (`Movie`) e Avaliações (`Review`)
 }
 ```
 
-`DELETE /api/movies/{movie_id}/` - Rota que deleta filmes
+## `DELETE /api/movies/{movie_id}/` - Rota que deleta filmes
 
 ```
 // REQUEST
